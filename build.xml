@@ -33,7 +33,7 @@ xmlns:cs="antlib:com.puppycrawl.tools.checkstyle.ant">
     <property name="version-major" value="3" />
     <property name="version-minor" value="5" />
     <property name="version-patch" value="2" />
-    <property name="version" value="${version-major}.${version-minor}.${version-patch}-alpha" />
+    <property name="version" value="${version-major}.${version-minor}.${version-patch}" />
 
     <property name="final.name" value="${name}-${version}"/>
     <property name="revision.dir" value="${basedir}/.revision" />
@@ -50,6 +50,17 @@ xmlns:cs="antlib:com.puppycrawl.tools.checkstyle.ant">
     <property name="lib.dir" value="${src.dir}/java/lib" />
     <property name="lib.dir.includes" value="**/*.jar" />
     <property name="lib.dir.excludes" value="**/excluded/" />
+
+    <!-- packaging property set -->
+    <property name="package.release" value="1"/>
+    <property name="package.prefix" value="/usr"/>
+    <property name="package.conf.dir" value="/etc/zookeeper"/>
+    <property name="package.log.dir" value="/var/log/zookeeper"/>
+    <property name="package.pid.dir" value="/var/run/zookeeper"/>
+    <property name="package.var.dir" value="/var/lib/zookeeper"/>
+    <property name="package.share.dir" value="/share/zookeeper"/>
+    <property name="package.buildroot" value="/tmp/zookeeper_package_build_${user.name}"/>
+    <property name="package.build.dir" value="/tmp/zookeeper_package_build_${user.name}/BUILD"/>
 
     <!-- prior to ant 1.7.1 fileset always fails if dir doesn't exist
          so just point to bin directory and provide settings that exclude
@@ -994,6 +1005,139 @@ xmlns:cs="antlib:com.puppycrawl.tools.checkstyle.ant">
         <fileset file="${contrib.dir}/build.xml"/>
         <fileset file="${recipes.dir}/build.xml"/>
       </subant>
+    </target>
+
+    <target name="rpm" depends="package-native, tar" description="Make rpm package">
+      <subant target="rpm">
+        <!--Pass down the version in case its needed again and the target
+            distribution directory so contribs know where to install to.-->
+        <property name="version" value="${version}"/>
+        <property name="dist.dir" value="${dist.dir}"/>
+        <fileset file="${contrib.dir}/build.xml"/>
+        <fileset file="${recipes.dir}/build.xml"/>
+      </subant>  	
+      <path id="c.lib">
+        <fileset dir="${build.dir}">
+          <include name="${final.name}-lib.tar.gz"/>
+        </fileset>
+      </path>
+      <property name="c.lib" refid="c.lib"/>
+      <mkdir dir="${package.buildroot}/BUILD" />
+      <mkdir dir="${package.buildroot}/RPMS" />
+      <mkdir dir="${package.buildroot}/SRPMS" />
+      <mkdir dir="${package.buildroot}/SOURCES" />
+      <mkdir dir="${package.buildroot}/SPECS" />
+      <copy todir="${package.buildroot}/SOURCES">
+        <fileset dir="${build.dir}">
+          <include name="${final.name}.tar.gz" />
+        </fileset>
+        <fileset file="${c.lib}" />
+      </copy>
+      <copy file="${src.dir}/packages/rpm/spec/zookeeper.spec" todir="${package.buildroot}/SPECS">
+        <filterchain>
+          <replacetokens>
+            <token key="final.name" value="${final.name}" />
+            <token key="version" value="${version}" />
+            <token key="package.release" value="${package.release}" />
+            <token key="package.build.dir" value="${package.build.dir}" />
+            <token key="package.prefix" value="${package.prefix}" />
+            <token key="package.conf.dir" value="${package.conf.dir}" />
+            <token key="package.log.dir" value="${package.log.dir}" />
+            <token key="package.pid.dir" value="${package.pid.dir}" />
+            <token key="package.var.dir" value="${package.var.dir}" />
+            <token key="c.lib" value="${c.lib}" />
+          </replacetokens>
+        </filterchain>
+      </copy>
+      <rpm specFile="zookeeper.spec" command="-ba" topDir="${package.buildroot}" cleanBuildDir="true" failOnError="true" />
+      <copy todir="${build.dir}/" flatten="true">
+        <fileset dir="${package.buildroot}/RPMS">
+          <include name="**/${name}*.rpm" />
+        </fileset>
+        <fileset dir="${package.buildroot}/SRPMS">
+          <include name="**/${name}*.rpm" />
+        </fileset>
+      </copy>
+      <delete dir="${package.buildroot}" quiet="true" verbose="false"/>
+    </target>
+
+    <target name="deb" depends="ivy-retrieve-package, package-native, tar" description="Make deb package">
+      <subant target="deb">
+        <!--Pass down the version in case its needed again and the target
+            distribution directory so contribs know where to install to.-->
+        <property name="version" value="${version}"/>
+        <property name="dist.dir" value="${dist.dir}"/>
+        <fileset file="${contrib.dir}/build.xml"/>
+        <fileset file="${recipes.dir}/build.xml"/>
+      </subant>
+      <taskdef name="deb" classname="org.vafer.jdeb.ant.DebAntTask">
+        <classpath refid="java.classpath"/>
+        <classpath refid="package.classpath"/>
+      </taskdef>
+
+      <mkdir dir="${package.build.dir}/zookeeper.control" />
+      <copy todir="${package.buildroot}/${package.prefix}">
+        <fileset dir="${build.dir}/${final.name}">
+          <include name="bin/**" />
+          <include name="conf/**" />
+          <include name="sbin/**" />
+          <include name="share/**" />
+        </fileset>
+      </copy>
+      <copy todir="${package.build.dir}/zookeeper.control">
+        <fileset dir="${src.dir}/packages/deb/zookeeper.control">
+          <exclude name="control" />
+        </fileset>
+      </copy>
+      <copy file="${src.dir}/packages/deb/zookeeper.control/control" todir="${package.build.dir}/zookeeper.control">
+        <filterchain>
+          <replacetokens>
+            <token key="final.name" value="${final.name}" />
+            <token key="version" value="${version}" />
+            <token key="package.release" value="${package.release}" />
+            <token key="package.build.dir" value="${package.build.dir}" />
+            <token key="package.prefix" value="${package.prefix}" />
+            <token key="package.conf.dir" value="${package.conf.dir}" />
+            <token key="package.log.dir" value="${package.log.dir}" />
+            <token key="package.pid.dir" value="${package.pid.dir}" />
+            <token key="package.var.dir" value="${package.var.dir}" />
+          </replacetokens>
+        </filterchain>
+      </copy>
+      <deb destfile="${package.buildroot}/${name}_${version}-${package.release}_${os.arch}.deb" control="${package.build.dir}/zookeeper.control">
+        <tarfileset dir="${build.dir}/${final.name}/share/zookeeper" filemode="644" prefix="${package.prefix}/share/zookeeper">
+          <include name="**" />
+        </tarfileset>
+        <tarfileset dir="${build.dir}/${final.name}/bin" filemode="755" prefix="${package.prefix}/bin">
+          <include name="zkCli.sh" />
+        </tarfileset>
+        <tarfileset dir="${build.dir}/${final.name}/sbin" filemode="755" prefix="${package.prefix}/sbin">
+          <include name="**.sh" />
+        </tarfileset>
+        <tarfileset dir="${build.dir}/${final.name}/libexec" filemode="755" prefix="${package.prefix}/libexec">
+          <include name="zkEnv.sh" />
+        </tarfileset>
+        <tarfileset dir="${build.dir}/c/build/${package.prefix}/include" prefix="${package.prefix}/include">
+          <include name="**" />
+        </tarfileset> 
+        <tarfileset dir="${build.dir}/c/build/${package.prefix}/lib" filemode="755" prefix="${package.prefix}/lib">
+          <include name="**" />
+        </tarfileset> 
+        <tarfileset dir="${build.dir}/${final.name}/conf" filemode="644" prefix="${package.conf.dir}">
+          <include name="**" />
+        </tarfileset>
+        <tarfileset dir="${build.dir}/${final.name}/src/packages/deb/init.d" filemode="755" prefix="/etc/init.d">
+          <include name="**" />
+        </tarfileset>
+      </deb>
+
+      <copy todir="${build.dir}/" flatten="true">
+        <fileset dir="${package.buildroot}">
+          <include name="**/${name}*.deb" />
+        </fileset>
+      </copy>
+      <delete dir="${package.buildroot}" quiet="true" verbose="false"/>
+
     </target>
 
     <!-- ====================================================== -->
