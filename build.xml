@@ -913,6 +913,16 @@ xmlns:cs="antlib:com.puppycrawl.tools.checkstyle.ant">
         <fileset dir="src" excludes="**/*.template **/docs/build/**/* **/ivy*.jar"/>
       </copy>
   	  
+      <copy todir="${dist.dir}/${package.share.dir}/templates/conf">
+        <fileset dir="src/packages/templates/conf"/>
+      </copy>
+
+      <copy file="${basedir}/conf/zoo_sample.cfg" tofile="${dist.dir}/${package.share.dir}/templates/conf/zoo.cfg" />
+      <replace file="${dist.dir}/${package.share.dir}/templates/conf/zoo.cfg">
+        <replacetoken>/tmp/zookeeper</replacetoken>
+        <replacevalue>${VAR_DIR}/data</replacevalue>
+      </replace>
+
       <chmod perm="ugo+x" type="file" parallel="false">
         <fileset dir="${dist.dir}/bin"/>
         <fileset dir="${dist.dir}/sbin"/>
