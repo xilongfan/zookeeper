@@ -94,12 +94,12 @@ rm -rf %{buildroot}
 
 # ------------------------------ libzookeeper ------------------------------
 
-%package -n libzookeeper
+%package lib
 Summary: C client interface to zookeeper server
 Group: Development/Libraries
 BuildRequires: gcc
 
-%description -n libzookeeper
+%description lib
 The client supports two types of APIs -- synchronous and asynchronous.
 
 Asynchronous API provides non-blocking operations with completion callbacks and
@@ -110,7 +110,7 @@ zookeeper operations and runs its own event loop in a separate thread.
 
 Sync and Async APIs can be mixed and matched within the same application.
 
-%files -n libzookeeper
+%files lib
 %defattr(-, root, root, -)
 %doc src/c/README src/c/LICENSE
 %{_libdir}/libzookeeper_mt.so.*
@@ -118,16 +118,16 @@ Sync and Async APIs can be mixed and matched within the same application.
 
 # ------------------------------ libzookeeper-devel ------------------------------
 
-%package -n libzookeeper-devel
+%package lib-devel
 Summary: Headers and static libraries for libzookeeper
 Group: Development/Libraries
 Requires: gcc
 
-%description -n libzookeeper-devel
+%description lib-devel
 This package contains the libraries and header files needed for
 developing with libzookeeper.
 
-%files -n libzookeeper-devel
+%files lib-devel
 %defattr(-, root, root, -)
 %{_includedir}
 %{_libdir}/*.a
